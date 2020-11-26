@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <iostream>
+using namespace std;
 
 // Include GLEW
 #include <GL/glew.h>
@@ -27,6 +29,9 @@ glm::mat4 View;
 glm::mat4 ProjectionMatrix;
 glm::mat4 ModelMatrix;
 
+glm::mat4 lastFPView;
+glm::mat4 lastTPView;
+
 // Initial horizontal angle : toward -Z
 float horizontalAngle = 0.0f;
 // Initial vertical angle : none
@@ -41,7 +46,12 @@ double ypos_prev = 0.0;
 double xpos = 0.0;
 double ypos = 0.0;
 
+float gOrientation = 0.00f;
 double lastTime = 0.0;
+double lastSpaceTime = 0.0;
+int isFP = 0;
+double lastDiggingTime = 0.0;
+int isDigging = 0;
 
 void computeMouseRotates(); // 마우스 입력으로 물체를 회전
 void computeKeyboardTranslates(); // 키보드 입력으로 물체를 회전
@@ -138,16 +148,21 @@ int main(void)
 	// Camera matrix
 	// y축 위에서 xz평면을 바라본다.
 	View = glm::lookAt(
-		glm::vec3(1, 3, -3), // Camera is at (4,3,-3), in World Space
+		glm::vec3(4, 3, -3), // Camera is at (4,3,-3), in World Space
 		glm::vec3(0.0f, 0.0f, 0.0f),	// and looks at the origin
 		glm::vec3(0.0f, 1.0f, 0.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
 	);
 	ModelMatrix = glm::mat4(1.0);
+	lastTPView = View;
+	lastFPView = glm::lookAt(
+		glm::vec3(0.8f, 1.7f, -0.5f), 
+		glm::vec3(1.0f, 1.0f, 1.0f),
+		glm::vec3(0.0f, 1.0f, 1.0f)
+	);
 
 	// For speed computation
 	double lastTime = glfwGetTime();
 	double lastFrameTime = lastTime;
-	float gOrientation = 0.00f;
 
 	//x,z평면에 위치 시킨 후 동작		
 	// 몸통
@@ -168,15 +183,8 @@ int main(void)
 	// 바퀴2
 	glm::vec3 gPosition7(-0.6f, -0.8f, 0.0f);
 
-	// For speed computation
-	/*
-double lastTime = glfwGetTime();
-	double lastFrameTime = lastTime;
-	vec3 gOrientation;*/
 	// 회전 방향을 결정하는 flag
 	int flag = 0;
-	// 땅파기 수행 여부
-	int digging = 0;
 	do
 	{
 		// Clear the screen
@@ -207,8 +215,8 @@ double lastTime = glfwGetTime();
 		float deltaTime = (float)(currentTime - lastFrameTime);
 		lastFrameTime = currentTime;
 
-		// 엔터를 누르면 땅파기 동작 실행/중단
-		if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
+		// 엔터를 누르면 땅파기 동작 실행(전체 시점일때만)
+		if (isDigging) {
 			//경계값을 넘어가면 flag동작
 			if (gOrientation > 0.5f)
 				flag = 1;
@@ -223,6 +231,10 @@ double lastTime = glfwGetTime();
 				gOrientation -= 3.14159f / 2.0f * deltaTime * closeToCenter;
 			else
 				gOrientation += 3.14159f / 2.0f * deltaTime * closeToCenter;
+		}
+
+		if (currentTime - lastDiggingTime > 1.25f) {
+			isDigging = 0;
 		}
 		
 		// ===== model1 - 몸체 =====
@@ -499,25 +511,28 @@ void computeMouseRotates() {
 	// Get mouse position	
 	glfwGetCursorPos(window, &xpos, &ypos);
 
-	// Compute new orientation
-	if (xpos < xpos_prev)
-		horizontalAngle = -deltaTime * mouseSpeed;
-	else if (xpos > xpos_prev)
-		horizontalAngle = deltaTime * mouseSpeed;
-	else
-		horizontalAngle = 0.0;
+	// 1인칭 시점일 때만 카메라 이동 가능
+	if (!isFP) {
+		// Compute new orientation
+		if (xpos < xpos_prev)
+			horizontalAngle = -deltaTime * mouseSpeed;
+		else if (xpos > xpos_prev)
+			horizontalAngle = deltaTime * mouseSpeed;
+		else
+			horizontalAngle = 0.0;
 
-	if (ypos < ypos_prev)
-		verticalAngle = -deltaTime * mouseSpeed;
-	else if (ypos > ypos_prev)
-		verticalAngle = deltaTime * mouseSpeed;
-	else
-		verticalAngle = 0.0;
+		if (ypos < ypos_prev)
+			verticalAngle = -deltaTime * mouseSpeed;
+		else if (ypos > ypos_prev)
+			verticalAngle = deltaTime * mouseSpeed;
+		else
+			verticalAngle = 0.0;
 
-	View *= glm::eulerAngleYXZ(horizontalAngle, verticalAngle, 0.0f);
+		View *= glm::eulerAngleYXZ(horizontalAngle, verticalAngle, 0.0f);
 
-	xpos_prev = xpos;
-	ypos_prev = ypos;
+		xpos_prev = xpos;
+		ypos_prev = ypos;
+	}
 
 	// For the next frame, the "last time" will be "now"
 	lastTime = currentTime;
@@ -533,38 +548,114 @@ void computeKeyboardTranslates()
 	float deltaTime = float(currentTime - lastTime);
 
 	// Direction : Spherical coordinates to Cartesian coordinates conversion	
-	glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f);
+	glm::vec3 right = glm::vec3(-1.0f, 0.0f, 0.0f);
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 	glm::vec3 forward = glm::vec3(0.0f, 0.0f, 1.0f);
 
 	glm::vec3 translateFactor = glm::vec3(0.0f);
 
-	// Move forward
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-		translateFactor += up * deltaTime * speed;
-	}
-	// Move backward
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-		translateFactor -= up * deltaTime * speed;
-	}
-	// Move right
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-		translateFactor += right * deltaTime * speed;
-	}
-	// Move left
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-		translateFactor -= right * deltaTime * speed;
-	}
-	// Move up
-	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-		translateFactor += forward * deltaTime * speed;
-	}
-	// Move down
-	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-		translateFactor -= forward * deltaTime * speed;
+	// 3인칭 시점에만 움직인다.
+	if(!isFP && -1) {
+		// Move forward
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+			translateFactor += forward * deltaTime * speed;
+		}
+		// Move backward
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+			translateFactor -= forward * deltaTime * speed;
+		}
+		// Move right
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+			translateFactor += right * deltaTime * speed;
+		}
+		// Move left
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+			translateFactor -= right * deltaTime * speed;
+		}
+		// Move up
+		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+			translateFactor += up * deltaTime * speed;
+		}
+		// Move down
+		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+			translateFactor -= up * deltaTime * speed;
+		}
+
+		View *= glm::translate(glm::mat4(1.0f), translateFactor);
+
+		if (isFP) {
+			lastFPView = View;
+		}
+		else {
+			lastTPView = View;
+		}
 	}
 
-	View *= glm::translate(glm::mat4(1.0f), translateFactor);
+	if (!isFP) {
+		// Move forward
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+			translateFactor += forward * deltaTime * speed;
+		}
+		// Move backward
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+			translateFactor -= forward * deltaTime * speed;
+		}
+		// Move right
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+			translateFactor += right * deltaTime * speed;
+		}
+		// Move left
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+			translateFactor -= right * deltaTime * speed;
+		}
+		// Move up
+		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+			translateFactor += up * deltaTime * speed;
+		}
+		// Move down
+		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+			translateFactor -= up * deltaTime * speed;
+		}
+
+
+	}
+
+	// 시점 변경
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && currentTime - lastSpaceTime > 0.5) {
+		// 3인칭 시점으로 변경
+		if (isFP) {
+			isFP = 0;
+			lastFPView = View;
+
+			View = lastTPView;
+			//View = glm::lookAt(
+			//	glm::vec3(4, 5, -5), // Camera is at (4,3,-3), in World Space
+			//	glm::vec3(2.0f, -1.0f, 1.0f),	// and looks at the origin
+			//	glm::vec3(0.0f, 2.0f, 1.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
+			//);
+		}
+		// 1인칭 시점으로 변경
+		else if(!isFP && !isDigging){
+			isFP = 1;
+			lastTPView = View;
+
+			View = lastFPView;
+			//View = glm::lookAt(
+			//	glm::vec3(0.8f, 1.7f, -0.5f), // Camera is at (4,3,-3), in World Space
+			//	glm::vec3(1.0f, 1.0f, 1.0f),	// and looks at the origin
+			//	glm::vec3(0.0f, 1.0f, 1.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
+			//);
+
+			//View *= glm::translate(glm::mat4(1.0f), translateFactor + right * 0.5f * speed);
+		}
+		lastSpaceTime = currentTime;
+	}
+
+	// 엔터 눌렀을때: 땅파기 시작
+	if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && currentTime - lastDiggingTime > 0.5 && !isDigging && !isFP) {
+		isDigging = 1;
+		lastDiggingTime = currentTime;
+	}
 
 	// For the next frame, the "last time" will be "now"
 	lastTime = currentTime;
