@@ -240,7 +240,7 @@ int main(void)
 		}
 		
 		// ===== model1 - 몸체 =====
-		glm::mat4 TranslationMatrix1 = translate(mat4(), gPosition1);
+		glm::mat4 TranslationMatrix1 = translate(mat4(), gPosition1 + moving);
 		glm::mat4 RotationMatrix1 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
 		// 기둥형태를 만들기 위해 scale 조작
 		glm::mat4 ScalingMatrix1 = scale(mat4(), vec3(0.7f, 0.5f, 1.0f));
@@ -254,7 +254,7 @@ int main(void)
 		
 		// ===== model2 - 핸들1 =====
 		// 첫번째 큐브의 Translation + 두번째 큐브의 Translation (첫번째 큐브의 Translation에 종속되게 설정)
-		glm::mat4 TranslationMatrix2 = translate(mat4(), gPosition2 + gPosition1);
+		glm::mat4 TranslationMatrix2 = translate(mat4(), gPosition2 + gPosition1 + moving);
 		// 첫번째 큐브의 rotation + 두번째 큐브의 rotation (첫번째 큐브의 rotation에 종속되게 설정)
 		glm::mat4 RotationMatrix2 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix2 = scale(mat4(), vec3(0.1f, 0.8f, 0.1f));
@@ -266,7 +266,7 @@ int main(void)
 		glm::mat4 MVP2 = Projection * View * Model2;
 
 		// ===== model3 - 핸들2 ======
-		glm::mat4 TranslationMatrix3 = translate(mat4(), gPosition3 + gPosition2);
+		glm::mat4 TranslationMatrix3 = translate(mat4(), gPosition3 + gPosition2 + moving);
 		glm::mat4 RotationMatrix3 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix3 = scale(mat4(), vec3(0.1f, 0.1f, 0.7f));
 
@@ -276,7 +276,7 @@ int main(void)
 		glm::mat4 MVP3 = Projection * View * Model3;
 
 		// ====== model4 - 핸들3 ======
-		glm::mat4 TranslationMatrix4 = translate(mat4(), gPosition4 + gPosition3);
+		glm::mat4 TranslationMatrix4 = translate(mat4(), gPosition4 + gPosition3 + moving);
 		glm::mat4 RotationMatrix4 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix4 = scale(mat4(), vec3(0.1f, 0.8f, 0.1f));
 
@@ -286,7 +286,7 @@ int main(void)
 		glm::mat4 MVP4 = Projection * View * Model4;
 
 		// ====== model5 - bucket =======
-		glm::mat4 TranslationMatrix5 = translate(mat4(), gPosition5 + gPosition4);
+		glm::mat4 TranslationMatrix5 = translate(mat4(), gPosition5 + gPosition4 + moving);
 		glm::mat4 RotationMatrix5 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix5 = scale(mat4(), vec3(0.3f, 0.3f, 0.3f));
 
@@ -296,7 +296,7 @@ int main(void)
 		glm::mat4 MVP5 = Projection * View * Model5;
 
 		// ====== model6 - 바퀴1 =======
-		glm::mat4 TranslationMatrix6 = translate(mat4(), gPosition6 + gPosition1);
+		glm::mat4 TranslationMatrix6 = translate(mat4(), gPosition6 + gPosition1 + moving);
 		glm::mat4 RotationMatrix6 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
 		glm::mat4 ScalingMatrix6 = scale(mat4(), vec3(0.2f, 0.3f, 1.0f));
 
@@ -306,7 +306,7 @@ int main(void)
 		glm::mat4 MVP6 = Projection * View * Model6;
 
 		// ====== model7 - 바퀴2 =======
-		glm::mat4 TranslationMatrix7 = translate(mat4(), gPosition7 + gPosition1);
+		glm::mat4 TranslationMatrix7 = translate(mat4(), gPosition7 + gPosition1 + moving);
 		glm::mat4 RotationMatrix7 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
 		glm::mat4 ScalingMatrix7 = scale(mat4(), vec3(0.2f, 0.3f, 1.0f));
 
@@ -556,34 +556,42 @@ void computeKeyboardTranslates()
 
 	glm::vec3 translateFactor = glm::vec3(0.0f);
 
-	// 3인칭 시점에만 움직인다.
-	if (!isFP) {
-		// Move forward
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-			translateFactor += forward * deltaTime * speed;
-		}
-		// Move backward
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-			translateFactor -= forward * deltaTime * speed;
-		}
-		// Move right
-		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-			translateFactor += right * deltaTime * speed;
-		}
-		// Move left
-		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-			translateFactor -= right * deltaTime * speed;
-		}
-		// Move up
-		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-			translateFactor += up * deltaTime * speed;
-		}
-		// Move down
-		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-			translateFactor -= up * deltaTime * speed;
-		}
+	// Move forward
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		translateFactor += forward * deltaTime * speed;
+	}
+	// Move backward
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		translateFactor -= forward * deltaTime * speed;
+	}
+	// Move right
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+		translateFactor += right * deltaTime * speed;
+	}
+	// Move left
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+		translateFactor -= right * deltaTime * speed;
+	}
+	// Move up
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+		translateFactor += up * deltaTime * speed;
+	}
+	// Move down
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+		translateFactor -= up * deltaTime * speed;
+	}
 
-		View *= glm::translate(glm::mat4(1.0f), translateFactor);
+	if (isFP) {
+		View *= glm::translate(glm::mat4(1.0f), -translateFactor);
+	}
+	//View *= glm::translate(glm::mat4(1.0f), translateFactor);
+	moving += translateFactor;
+
+	if (isFP) {
+		lastFPView = View;
+	}
+	else {
+		lastTPView = View;
 	}
 
 	// 시점 변경
@@ -591,20 +599,28 @@ void computeKeyboardTranslates()
 		// 3인칭 시점으로 변경
 		if (isFP) {
 			isFP = 0;
+			//lastFPView = View;
+
+			//View = lastTPView;
 			View = glm::lookAt(
-				glm::vec3(4, 5, -5), // Camera is at (4,3,-3), in World Space
+				glm::vec3(6, 8, -5), // Camera is at (4,3,-3), in World Space
 				glm::vec3(2.0f, -1.0f, 1.0f),	// and looks at the origin
 				glm::vec3(0.0f, 2.0f, 1.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
 			);
 		}
 		// 1인칭 시점으로 변경
-		else if (!isFP && !isDigging) {
+		else if(!isFP && !isDigging){
 			isFP = 1;
+			//lastTPView = View;
+
+			//View = lastFPView;
 			View = glm::lookAt(
 				glm::vec3(0.8f, 1.7f, -0.5f), // Camera is at (4,3,-3), in World Space
 				glm::vec3(1.0f, 1.0f, 1.0f),	// and looks at the origin
 				glm::vec3(0.0f, 1.0f, 1.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
 			);
+
+			View *= glm::translate(glm::mat4(1.0f), -moving);
 		}
 		lastSpaceTime = currentTime;
 	}
@@ -614,6 +630,7 @@ void computeKeyboardTranslates()
 		isDigging = 1;
 		lastDiggingTime = currentTime;
 	}
+
 	// For the next frame, the "last time" will be "now"
 	lastTime = currentTime;
 }
