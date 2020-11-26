@@ -1,0 +1,39 @@
+#version 330 core
+
+// Ouput data
+out vec3 color;
+
+uniform int colorCheck;
+
+// 분기문 조건에 따라서 각 도형의 색상 다르게 표현 가능!!!
+void main(){
+
+	if (colorCheck == 0)
+	{
+		color = vec3(0.5, 0.5, 0.0);
+	}		
+	else if (colorCheck == 1)
+	{
+		color = vec3(0.2, 0.4, 0.2);
+	}	
+
+	else if (colorCheck == 2)
+	{
+		color = vec3(0.0, 1.0, 0.0);
+	}
+
+	else if (colorCheck == 3)
+	{
+		color = vec3(0.0, 1.0, 1.0);
+	}
+
+	else if (colorCheck == 4)
+	{
+		color = vec3(0.5, 0.1, 0.0);
+	}
+
+	else if (colorCheck == 5)
+	{
+		color = vec3(0.2, 0.2, 0.2);
+	}
+}
