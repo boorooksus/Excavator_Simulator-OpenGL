@@ -29,6 +29,8 @@ glm::mat4 View;
 glm::mat4 ProjectionMatrix;
 glm::mat4 ModelMatrix;
 
+glm::mat4 lastTPView;
+
 // Initial horizontal angle : toward -Z
 float horizontalAngle = 0.0f;
 // Initial vertical angle : none
@@ -601,35 +603,37 @@ void computeKeyboardTranslates()
 
 	glm::vec3 translateFactor = glm::vec3(0.0f);
 
-	// 3인칭 시점에만 움직인다.
-	if (!isFP) {
-		// Move forward
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-			translateFactor += forward * deltaTime * speed;
-		}
-		// Move backward
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-			translateFactor -= forward * deltaTime * speed;
-		}
-		// Move right
-		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-			translateFactor += right * deltaTime * speed;
-		}
-		// Move left
-		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-			translateFactor -= right * deltaTime * speed;
-		}
-		// Move up
-		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-			translateFactor += up * deltaTime * speed;
-		}
-		// Move down
-		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-			translateFactor -= up * deltaTime * speed;
-		}
+	
+	// Move forward
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+		translateFactor += forward * deltaTime * speed;
+	}
+	// Move backward
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+		translateFactor -= forward * deltaTime * speed;
+	}
+	// Move right
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+		translateFactor += right * deltaTime * speed;
+	}
+	// Move left
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+		translateFactor -= right * deltaTime * speed;
+	}
+	// Move up
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+		translateFactor += up * deltaTime * speed;
+	}
+	// Move down
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+		translateFactor -= up * deltaTime * speed;
+	}
 
-		moving += translateFactor;
+	moving += translateFactor;
+
+	if (!isFP) {
 		View *= glm::translate(glm::mat4(1.0f), translateFactor);
+		lastTPView = View;
 	}
 
 	// 시점 변경
@@ -637,11 +641,7 @@ void computeKeyboardTranslates()
 		// 3인칭 시점으로 변경
 		if (isFP) {
 			isFP = 0;
-			View = glm::lookAt(
-				glm::vec3(4, 5, -5), // Camera is at (4,3,-3), in World Space
-				glm::vec3(2.0f, -1.0f, 1.0f),	// and looks at the origin
-				glm::vec3(0.0f, 2.0f, 1.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
-			);
+			View = lastTPView;
 		}
 		// 1인칭 시점으로 변경
 		else if (!isFP && !isDigging) {
