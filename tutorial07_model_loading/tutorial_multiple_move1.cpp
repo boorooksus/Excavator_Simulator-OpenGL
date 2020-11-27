@@ -29,9 +29,6 @@ glm::mat4 View;
 glm::mat4 ProjectionMatrix;
 glm::mat4 ModelMatrix;
 
-glm::mat4 lastFPView;
-glm::mat4 lastTPView;
-
 // Initial horizontal angle : toward -Z
 float horizontalAngle = 0.0f;
 // Initial vertical angle : none
@@ -54,6 +51,7 @@ double lastDiggingTime = 0.0;
 int isDigging = 0;
 
 glm::vec3 moving(0.0f, 0.0f, 0.0f);
+float direction = 0.0f;
 
 void computeMouseRotates(); // 마우스 입력으로 물체를 회전
 void computeKeyboardTranslates(); // 키보드 입력으로 물체를 회전
@@ -98,15 +96,13 @@ int main(void)
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-	// ===== km =========
 	// Hide the mouse and enable unlimited mouvement
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	// Set the mouse at the center of the screen
 	glfwPollEvents();
-	glfwSetCursorPos(window, 1024 / 2, 768 / 2);
+	//glfwSetCursorPos(window, 1024 / 2, 768 / 2);
 
-	// =============================
 
 	// Dark blue background
 	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
@@ -116,10 +112,8 @@ int main(void)
 	// Accept fragment if it closer to the camera than the former one
 	glDepthFunc(GL_LESS);
 
-	// ==== km? =====
 	// Cull triangles which normal is not towards the camera
-	glEnable(GL_CULL_FACE);
-	// ===============
+	//glEnable(GL_CULL_FACE);
 
 	GLuint VertexArrayID;
 	glGenVertexArrays(1, &VertexArrayID);
@@ -134,6 +128,11 @@ int main(void)
 	//  ==== 각 도형마다 컬러 다르게 표현하기 위해 사용 =====
 	GLuint ColorCheckID = glGetUniformLocation(programID, "colorCheck");
 
+	// ================ 텍스쳐 테스트
+	GLuint Texture = loadBMP_custom("ground.bmp");
+	GLuint TextureCheckID = glGetUniformLocation(programID, "TextureCheck");
+
+
 	// Read our .obj file
 	std::vector<glm::vec3> vertices;
 	std::vector<glm::vec2> uvs;
@@ -145,22 +144,21 @@ int main(void)
 	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
 
+	GLuint uvbuffer;
+	glGenBuffers(1, &uvbuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+	glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), &uvs[0], GL_STATIC_DRAW);
+
 	// Projection matrix : 45?Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
 	glm::mat4 Projection = glm::perspective(45.0f, 4.0f / 3.0f, 0.1f, 100.0f);
 	// Camera matrix
 	// y축 위에서 xz평면을 바라본다.
 	View = glm::lookAt(
-		glm::vec3(4, 3, -3), // Camera is at (4,3,-3), in World Space
+		glm::vec3(11, 10, -7), // Camera is at (4,3,-3), in World Space
 		glm::vec3(0.0f, 0.0f, 0.0f),	// and looks at the origin
 		glm::vec3(0.0f, 1.0f, 0.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
 	);
 	ModelMatrix = glm::mat4(1.0);
-	lastTPView = View;
-	lastFPView = glm::lookAt(
-		glm::vec3(0.8f, 1.7f, -0.5f), 
-		glm::vec3(1.0f, 1.0f, 1.0f),
-		glm::vec3(0.0f, 1.0f, 1.0f)
-	);
 
 	// For speed computation
 	double lastTime = glfwGetTime();
@@ -171,7 +169,6 @@ int main(void)
 	glm::vec3 gPosition1(0.0f, 0.0f, 0.0f);
 
 	// 핸들
-	// 첫번째 큐브의 말단에 존재하도록 위치 조정
 	glm::vec3 gPosition2(0.0f, 0.5f, 0.5f);
 	glm::vec3 gPosition3(0.0f, 0.7f, 0.8f);
 	glm::vec3 gPosition4(0.0f, -0.2f, 1.3f);
@@ -181,9 +178,11 @@ int main(void)
 
 	// 바퀴1
 	glm::vec3 gPosition6(0.6f, -0.8f, 0.0f);
-
 	// 바퀴2
 	glm::vec3 gPosition7(-0.6f, -0.8f, 0.0f);
+
+	// 바닥
+	glm::vec3 gPosition8(0.0f, -1.1f, 0.0f);
 
 	// 회전 방향을 결정하는 flag
 	int flag = 0;
@@ -194,7 +193,7 @@ int main(void)
 
 		// Use our shader
 		glUseProgram(programID);
-		// ===== km
+
 		// Compute the Model matrix from keyboard and mouse input
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 		{
@@ -203,21 +202,18 @@ int main(void)
 				glfwGetCursorPos(window, &xpos_prev, &ypos_prev);
 				firstPress = false;
 			}
-
 			computeMouseRotates();
 		}
-
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
 			firstPress = true;
 
 		computeKeyboardTranslates();
-		// ====================
 
 		double currentTime = glfwGetTime();
 		float deltaTime = (float)(currentTime - lastFrameTime);
 		lastFrameTime = currentTime;
 
-		// 엔터를 누르면 땅파기 동작 실행(전체 시점일때만)
+		// 땅파기 동작 실행
 		if (isDigging) {
 			//경계값을 넘어가면 flag동작
 			if (gOrientation > 0.5f)
@@ -228,20 +224,21 @@ int main(void)
 			// 중심에 가까울수록 속도가 증가 (진자 운동과 가깝도록 함)
 			float closeToCenter = -(abs(gOrientation) - 1.3f);
 
-			//1.2f를 넘어가면 +, -1.2f보다 작아지면 -
+			// 경계값을 넘어가면 +, 경계값보다 작아지면 -
 			if (flag == 1)
 				gOrientation -= 3.14159f / 2.0f * deltaTime * closeToCenter;
 			else
 				gOrientation += 3.14159f / 2.0f * deltaTime * closeToCenter;
 		}
 
+		// 땅파기 수행을 마쳤을 때 
 		if (currentTime - lastDiggingTime > 1.25f) {
 			isDigging = 0;
 		}
 		
 		// ===== model1 - 몸체 =====
 		glm::mat4 TranslationMatrix1 = translate(mat4(), gPosition1);
-		glm::mat4 RotationMatrix1 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
+		glm::mat4 RotationMatrix1 = eulerAngleYXZ(direction, 0.0f, 0.0f);
 		// 기둥형태를 만들기 위해 scale 조작
 		glm::mat4 ScalingMatrix1 = scale(mat4(), vec3(0.7f, 0.5f, 1.0f));
 		
@@ -250,13 +247,12 @@ int main(void)
 		Model1 = Model1 * RotationMatrix1 * TranslationMatrix1 * ScalingMatrix1;
 		// Our ModelViewProjection : multiplication of our 3 matrices
 		glm::mat4 MVP1 = Projection * View * Model1; // Remember, matrix multiplication is the other way around
-		// 진자 운동 구현 관련 중요한 부분!!!
 		
 		// ===== model2 - 핸들1 =====
 		// 첫번째 큐브의 Translation + 두번째 큐브의 Translation (첫번째 큐브의 Translation에 종속되게 설정)
 		glm::mat4 TranslationMatrix2 = translate(mat4(), gPosition2 + gPosition1);
 		// 첫번째 큐브의 rotation + 두번째 큐브의 rotation (첫번째 큐브의 rotation에 종속되게 설정)
-		glm::mat4 RotationMatrix2 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
+		glm::mat4 RotationMatrix2 =  eulerAngleYXZ(direction, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix2 = scale(mat4(), vec3(0.1f, 0.8f, 0.1f));
 
 		glm::mat4 Model2 = glm::mat4(1.0f);
@@ -267,7 +263,7 @@ int main(void)
 
 		// ===== model3 - 핸들2 ======
 		glm::mat4 TranslationMatrix3 = translate(mat4(), gPosition3 + gPosition2);
-		glm::mat4 RotationMatrix3 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
+		glm::mat4 RotationMatrix3 = eulerAngleYXZ(direction, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix3 = scale(mat4(), vec3(0.1f, 0.1f, 0.7f));
 
 		glm::mat4 Model3 = glm::mat4(1.0f);
@@ -277,7 +273,7 @@ int main(void)
 
 		// ====== model4 - 핸들3 ======
 		glm::mat4 TranslationMatrix4 = translate(mat4(), gPosition4 + gPosition3);
-		glm::mat4 RotationMatrix4 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
+		glm::mat4 RotationMatrix4 = eulerAngleYXZ(direction, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix4 = scale(mat4(), vec3(0.1f, 0.8f, 0.1f));
 
 		glm::mat4 Model4 = glm::mat4(1.0f);
@@ -287,7 +283,7 @@ int main(void)
 
 		// ====== model5 - bucket =======
 		glm::mat4 TranslationMatrix5 = translate(mat4(), gPosition5 + gPosition4);
-		glm::mat4 RotationMatrix5 = eulerAngleYXZ(0.0f, gOrientation, 0.0f);
+		glm::mat4 RotationMatrix5 = eulerAngleYXZ(direction, gOrientation, 0.0f);
 		glm::mat4 ScalingMatrix5 = scale(mat4(), vec3(0.3f, 0.3f, 0.3f));
 
 		glm::mat4 Model5 = glm::mat4(1.0f);
@@ -297,7 +293,7 @@ int main(void)
 
 		// ====== model6 - 바퀴1 =======
 		glm::mat4 TranslationMatrix6 = translate(mat4(), gPosition6 + gPosition1);
-		glm::mat4 RotationMatrix6 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
+		glm::mat4 RotationMatrix6 = eulerAngleYXZ(direction, 0.0f, 0.0f);
 		glm::mat4 ScalingMatrix6 = scale(mat4(), vec3(0.2f, 0.3f, 1.0f));
 
 		glm::mat4 Model6 = glm::mat4(1.0f);
@@ -307,13 +303,25 @@ int main(void)
 
 		// ====== model7 - 바퀴2 =======
 		glm::mat4 TranslationMatrix7 = translate(mat4(), gPosition7 + gPosition1);
-		glm::mat4 RotationMatrix7 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
+		glm::mat4 RotationMatrix7 = eulerAngleYXZ(direction, 0.0f, 0.0f);
 		glm::mat4 ScalingMatrix7 = scale(mat4(), vec3(0.2f, 0.3f, 1.0f));
 
 		glm::mat4 Model7 = glm::mat4(1.0f);
 		Model7 = Model7 * RotationMatrix7 * TranslationMatrix7 * ScalingMatrix7;
 
 		glm::mat4 MVP7 = Projection * View * Model7;
+
+		// ===== model8 - 바닥 =====
+		glm::mat4 TranslationMatrix8 = translate(mat4(), gPosition8 - moving);
+		glm::mat4 RotationMatrix8 = eulerAngleYXZ(0.0f, 0.0f, 0.0f);
+		glm::mat4 ScalingMatrix8 = scale(mat4(), vec3(50.7f, 0.0f, 50.0f));
+
+		glm::mat4 Model8 = glm::mat4(1.0f);
+
+		Model8 = Model8 * RotationMatrix8 * TranslationMatrix8 * ScalingMatrix8;
+		// Our ModelViewProjection : multiplication of our 3 matrices
+		glm::mat4 MVP8 = Projection * View * Model8; // Remember, matrix multiplication is the other way around
+
 
 		// ===== model1 - 몸체 =====
 		// Send our transformation to the currently bound shader,
@@ -478,6 +486,43 @@ int main(void)
 		// Draw the triangle !
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size()); // 12*3 indices starting at 0 -> 12 triangles
 		//=======================
+		// ===== model8 - 바닥 =====
+		// Send our transformation to the currently bound shader,
+		// in the "MVP" uniform
+		glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &MVP8[0][0]);
+
+		// ===== 텍스쳐
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, Texture);
+		// Set our "myTextureSampler" sampler to use Texture Unit 0
+		glUniform1i(ColorCheckID, 11);
+
+		// 1rst attribute buffer : vertices
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+		glVertexAttribPointer(
+			0,		  // attribute. No particular reason for 0, but must match the layout in the shader.
+			3,		  // size
+			GL_FLOAT, // type
+			GL_FALSE, // normalized?
+			0,		  // stride
+			(void*)0 // array buffer offset
+		);
+
+		// 2nd attribute buffer : UVs
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+		glVertexAttribPointer(
+			1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			2,                                // size : U+V => 2
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
+		// Draw the triangle !
+		glDrawArrays(GL_TRIANGLES, 0, vertices.size()); // 12*3 indices starting at 0 -> 12 triangles
 
 
 		glDisableVertexAttribArray(0);
@@ -583,6 +628,7 @@ void computeKeyboardTranslates()
 			translateFactor -= up * deltaTime * speed;
 		}
 
+		moving += translateFactor;
 		View *= glm::translate(glm::mat4(1.0f), translateFactor);
 	}
 
@@ -601,9 +647,9 @@ void computeKeyboardTranslates()
 		else if (!isFP && !isDigging) {
 			isFP = 1;
 			View = glm::lookAt(
-				glm::vec3(0.8f, 1.7f, -0.5f), // Camera is at (4,3,-3), in World Space
-				glm::vec3(1.0f, 1.0f, 1.0f),	// and looks at the origin
-				glm::vec3(0.0f, 1.0f, 1.0f)	 // Head is up (set to 0,-1,0 to look upside-down)
+				glm::vec3(0.8f, 1.7f, -0.5f), 
+				glm::vec3(1.0f, 1.0f, 1.0f),
+				glm::vec3(0.0f, 1.0f, 1.0f)	 
 			);
 		}
 		lastSpaceTime = currentTime;
