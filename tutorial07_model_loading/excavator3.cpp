@@ -797,6 +797,8 @@ void computeKeyboardTranslates()
 				glm::vec3(1.0f, 1.0f, 1.0f),
 				glm::vec3(0.0f, 1.0f, 1.0f)	 
 			);
+			View *= glm::translate(glm::mat4(1.0f), glm::vec3(0.7f, 0.2f, -1.5f));
+			//0.8 0.0 -1.4
 		}
 		lastSpaceTime = currentTime;
 	}
