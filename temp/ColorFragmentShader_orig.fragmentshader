@@ -1,0 +1,93 @@
+#version 330 core
+
+in vec2 UV;
+
+// Interpolated values from the vertex shaders
+in vec3 FragPos;  
+in vec3 normal;  
+  
+uniform vec3 lightPos; 
+uniform vec3 viewPos;
+uniform vec3 lightColor;
+uniform vec3 objectColor;
+
+// Ouput data
+out vec3 color;
+
+uniform int colorCheck;
+uniform sampler2D TextureCheck;
+
+uniform mat4 MV;
+uniform vec3 LightPosition_worldspace;
+
+// 분기문 조건에 따라서 각 도형의 색상 다르게 표현 가능!!!
+void main(){
+
+	 // Ambient
+	 // 색상에 상수를 곱해주는것으로 표현
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * objectColor;
+
+	// Diffuse 
+	// normal vector와 빛의 방향과의 내적 = 면에서의 전체적인 빛의 세기
+	float diffuseStrength = 0.4;
+    vec3 norm = normalize(normal);
+	// 정점에서 빛의 위치를 향하는 벡터
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diffuseStrength * diff * objectColor;
+    
+    // Specular
+	// 반사되는 빛 중에서 눈으로 들어오는 양을 결정
+	// 반사되는 빛의 방향과 시선방향의 내적으로 빛의 세기를 구하고
+	// 빛의 세기가 0이상인것을 32제곱해서 specular light를 나타낸다. 
+	// specular strength와 spec을 곱해서 specular light의 세기를 구한 후 색상과 곱해서
+	// specular light의 색상을 구한다.
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);  
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * objectColor;  
+
+	//light intelsity function
+	vec3 result = (ambient + diffuse + specular);
+
+	if (colorCheck == 0) // 주황색
+	{
+		color = vec3(1.0f, 0.5f, 0.0f);
+	}		
+	else if (colorCheck == 1)
+	{
+		color = vec3(0.5f, 0.0f, 0.0f);
+	}	
+
+	else if (colorCheck == 2)
+	{
+		color = vec3(0.0f, 1.0f, 0.0f);
+	}
+
+	else if (colorCheck == 3) // 하늘색
+	{
+		color = vec3(0.0f, 0.8f, 1.0f);
+		//0.0f, 0.8f, 1.0f
+		//0.0, 1.0, 1.0
+	}
+
+	else if (colorCheck == 4)
+	{
+		color = vec3(0.5f, 0.1f, 0.0f);
+	}
+
+	else if (colorCheck == 5) // 회색
+	{
+		color = vec3(0.2f, 0.2f, 0.2f);
+	} 
+	else if (colorCheck == 11){ // 땅 텍스쳐
+		color = texture( TextureCheck, UV ).rgb;
+
+		//color = result;
+	}
+
+
+
+}
