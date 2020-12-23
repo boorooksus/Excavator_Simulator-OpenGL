@@ -52,6 +52,12 @@ OpenGL을 활용하여 굴삭기를 모델링하고 동작시키는 시뮬레이
 
 <br>
 
+#### 프로그램 실행 방법
+
+ "Excavator_Simulator" 폴더 내에 exe파일 실행
+
+<br>
+
 #### 프로젝트 설치 방법
 
 1. openGL 튜토리얼 다운로드(http://www.opengl-tutorial.org/download/)
@@ -66,5 +72,5 @@ OpenGL을 활용하여 굴삭기를 모델링하고 동작시키는 시뮬레이
 5. opengl_project 폴더 내에 생성된 "Tutorial.sln" 실행
 6. 굴삭기 프로젝트 추가
    - 새로운 프로젝트를 추가하거나 Tutorial 프로젝트들 중 하나를 비워둔다.
-   - 프로젝트 폴더와 "common" 폴더에 각각 깃 허브에 올린 Excavator_Simulator" 폴더 내의 자료들과"common" 폴더 자료들을 옮긴다.
+   - 프로젝트 폴더와 "common" 폴더에 각각 깃 허브에 올린 "Excavator_Simulator" 폴더 내의 자료들과"common" 폴더 자료들을 옮긴다.
 
